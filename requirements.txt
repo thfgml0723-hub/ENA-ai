@@ -1,0 +1,19 @@
+# ENA RAG 챗봇 (멀티유저) — Streamlit Cloud / pip 배포용
+# 실행: streamlit run 6.MultiService/code/multiusers.py
+
+streamlit>=1.32.2,<2
+python-dotenv>=1.0.1,<2
+
+openai>=1.34,<2
+langchain>=0.3,<0.4
+langchain-core>=0.3,<0.4
+langchain-community>=0.3,<0.4
+langchain-openai>=0.2,<0.3
+langchain-text-splitters>=0.3,<0.4
+pypdf>=4.2.0,<5
+tiktoken>=0.7,<0.8
+
+supabase>=2.0.0,<3
+numpy>=1.26.0,<3
+requests>=2.31.0,<3
+pydantic>=2.7.4,<3
