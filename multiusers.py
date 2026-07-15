@@ -27,7 +27,19 @@ from supabase import Client, create_client
 # ──────────────────────────────────────────────
 # 경로 및 환경 변수
 # ──────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+def _resolve_project_root() -> Path:
+    """로컬(KTENA/6.MultiService/code)과 Streamlit Cloud(레포 루트) 모두 지원."""
+    here = Path(__file__).resolve().parent
+    # 로컬 모노레포: .../KTENA/6.MultiService/code/this.py
+    if here.name == "code" and (here.parents[1] / "pyproject.toml").exists():
+        return here.parents[1]
+    if here.name == "code" and (here.parents[1] / "logo.png").exists():
+        return here.parents[1]
+    # Streamlit Cloud 등: 스크립트가 레포 루트에 있는 경우
+    return here
+
+
+PROJECT_ROOT = _resolve_project_root()
 ENV_PATH = PROJECT_ROOT / ".env"
 LOGO_PATH = PROJECT_ROOT / "logo.png"
 
@@ -77,10 +89,7 @@ TITLE_SYSTEM_PROMPT = (
 # 로깅
 # ──────────────────────────────────────────────
 def setup_logging() -> logging.Logger:
-    log_dir = PROJECT_ROOT / "logs"
-    log_dir.mkdir(exist_ok=True)
-    log_file = log_dir / f"multiusers_{datetime.now().strftime('%Y%m%d')}.log"
-
+    """콘솔 로그는 항상 사용. 파일 로그는 쓰기 가능할 때만 추가."""
     logger = logging.getLogger("multiusers_chatbot")
     logger.setLevel(logging.WARNING)
     logger.handlers.clear()
@@ -90,16 +99,28 @@ def setup_logging() -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setLevel(logging.WARNING)
-    file_handler.setFormatter(formatter)
-
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.WARNING)
     console_handler.setFormatter(formatter)
-
-    logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+
+    # Streamlit Cloud는 소스 트리에 쓰기 권한이 없으므로 PermissionError를 무시한다.
+    log_candidates = [
+        PROJECT_ROOT / "logs",
+        Path(tempfile.gettempdir()) / "ktensa_logs",
+    ]
+    for log_dir in log_candidates:
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / f"multiusers_{datetime.now().strftime('%Y%m%d')}.log"
+            file_handler = logging.FileHandler(log_file, encoding="utf-8")
+            file_handler.setLevel(logging.WARNING)
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+            break
+        except OSError:
+            continue
+
     logger.propagate = False
 
     for noisy_logger in (
